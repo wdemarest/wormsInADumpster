@@ -6,7 +6,7 @@
 				height: 100%;
 			}
 		</style>
-		<title> snekz.io </title>
+		<title> wormsInADumpster.io </title>
 		<link rel="stylesheet" type="text/css" href="minireset.css">
 		<script
   src="https://code.jquery.com/jquery-3.3.1.js"
@@ -17,7 +17,7 @@
 				
 			*/
 			let Rules = {
-				snakeCount: 0,
+				snakeCount: 5,
 				appleCount: 5,
 				grapeCount: 10,
 				donutCount: 1,
@@ -295,6 +295,7 @@
 				grape: 'images/grape.png',
 				donut: 'images/donut.png',
 				background: 'images/black.png',
+				minimapBackground: 'images/minimapBackground.jpg',
 			};
  			let Img = {};
  			class View{
@@ -347,6 +348,9 @@
  					context.clear = function(spec, imageObj){
 						this.drawImage(Img.background, 0, 0, 1200, 800);
 					}.bind(context)
+					context.clearMinimap = function(spec, imageObj){
+						this.drawImage(Img.minimapBackground, 0, 0, 280, 260);
+					}.bind(context)
 					return context
 				}
  				render(context, sim){
@@ -378,6 +382,44 @@
 						context.draw(headSpec, Img.head, camera);
 					})
 				}
+				renderMinimap(context, sim){
+					context.clearMinimap()
+					
+					let camera = {};
+ 					camera.x = 100;
+					camera.y = 100;
+ 					for(let i = 0; i < sim.foodList.length; i++){
+						let foodSpec = {x: sim.foodList[i].x/10, y: sim.foodList[i].y/10, width: sim.foodList[i].width/10, height: sim.foodList[i].height/10, xAnchor: 0.5, yAnchor: 0.5};
+						
+						let drawX = foodSpec.x+120;
+						let drawY = foodSpec.y+130;
+						if(foodSpec.xAnchor && foodSpec.yAnchor){
+							drawX -= foodSpec.width*foodSpec.xAnchor;
+							drawY -= foodSpec.height*foodSpec.yAnchor;
+						}
+
+						if(sim.foodList[i].type == "apple"){
+							context.drawImage(Img.apple, drawX, drawY, foodSpec.width, foodSpec.height);
+						}
+						if(sim.foodList[i].type == "grape"){
+							context.drawImage(Img.grape, drawX, drawY, foodSpec.width, foodSpec.height);
+						}
+						if(sim.foodList[i].type == "donut"){
+							context.drawImage(Img.donut, drawX, drawY, foodSpec.width, foodSpec.height);
+						}
+					}
+
+					let headSpec = {x: sim.snakeList[0].x/10, y: sim.snakeList[0].y/10, width: 10, height: 10, xAnchor: 0.5, yAnchor: 0.5};
+
+					let drawX = headSpec.x+120;
+					let drawY = headSpec.y+130;
+					if(headSpec.xAnchor && headSpec.yAnchor){
+						drawX -= headSpec.width*headSpec.xAnchor;
+						drawY -= headSpec.height*headSpec.yAnchor;
+					}
+
+					context.drawImage(Img.head, drawX, drawY, headSpec.width, headSpec.height);
+				}
 			}
  			//ORGANIZATION
  			function Main(){
@@ -401,12 +443,14 @@
 						sim.foodsEaten(sim.snake);
 						sim.snakesCollided();
 						$("#length").html("Your length is "+sim.snake.length);
+						$("#speed").html("Your speed is "+Math.floor((sim.snake.speed+sim.snake.tempSpeed)/5));
 						sim.tick(1/60);
 						sim.timeSinceLastSim -= 1/60;
 					}
 				}
  				function tickView(){
 					view.render(context, sim);
+					view.renderMinimap(context, sim);
 				}
  				setInterval(tickSim, (1000/60))
 				setInterval(tickView, (1000/60))
@@ -428,6 +472,9 @@
 		</div>
 		<div id="length">
 			length
+		</div>
+		<div id="speed">
+			speed
 		</div>
 	</body>
 </html>
