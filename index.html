@@ -96,7 +96,7 @@
 							let food = this.foodList[i];
 							if(Math.abs(snake.x - food.x) + Math.abs(snake.y - food.y) < (food.width/2)+15){
 								
-								if(this.foodList[i].width < (this.foodList[i].startWidth/5)){
+								if(this.foodList[i].width < (this.foodList[i].startWidth/4)){
 									this.foodList.splice(i, 1)
 								}else{
 									snake.grow(Rules.growSpeed)
@@ -291,7 +291,7 @@
 			}
  			//VIEW
  			let ImageURLs = {
-				head: 'images/orangeCircle.png',
+				head: 'images/derpHead.png',
 				body: 'images/blueCircle.png',
 				apple: 'images/apple.png',
 				grape: 'images/grape.png',
