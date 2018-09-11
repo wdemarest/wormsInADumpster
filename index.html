@@ -100,9 +100,7 @@
 									this.foodList.splice(i, 1)
 								}else{
 									snake.grow(Rules.growSpeed)
-									if(food.type == "donut"){
-										snake.speedBoost(food.sugarContent)
-									}
+									snake.speedBoost(food.sugarContent)
 									food.eat(1)
 									i++;
 								}
