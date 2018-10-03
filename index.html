@@ -3,7 +3,7 @@
 		<style type="text/css">
 			#canvas{
 				width: 100%;
-				height: 100%;
+				height: 120%;
 			}
 		</style>
 		<title> wormsInADumpster.io </title>
@@ -21,8 +21,10 @@
 				appleCount: 5,
 				grapeCount: 10,
 				donutCount: 1,
+				meatCount: 3,
 				growSpeed: 0.2,
-				fruitScale: 2
+				fruitScale: 2,
+				snakeLengthMod: 1
 			}
 
  			function degToRad(deg){
@@ -58,6 +60,9 @@
 						if(type == "donut"){
 							return this.foodList.push(new Donut(board, x, y))
 						}
+						if(type == "meat"){
+							return this.foodList.push(new Meat(board, x, y))
+						}
 					}
 					this.snakeList = [];
 					this.snakeList.push (new Snake(board, 0, 0, "human"));
@@ -85,6 +90,11 @@
 						let y = board.pickRandomLocation();
 						addFood(x, y, "donut")
 					}
+					for (let i = 0; i < Rules.meatCount; i++) {
+						let x = board.pickRandomLocation();
+						let y = board.pickRandomLocation();
+						addFood(x, y, "meat")
+					}
  				}
  				tick(dt){
 					this.snakeList.forEach(snake => snake.tick(dt))
@@ -101,6 +111,7 @@
 								}else{
 									snake.grow(Rules.growSpeed)
 									snake.speedBoost(food.sugarContent)
+									snake.strengthen(food.protien)
 									food.eat(1)
 									i++;
 								}
@@ -112,25 +123,23 @@
 				}
  				//not yet functional
 				snakesCollided(){
-					return;
 					this.snakeList.forEach(snake => {
-						for(let i = 0; i < this.snakeList.length;){
-							let snake2 = this.snakeList[i];
+						this.snakeList.forEach(snake2 => {
 							if(snake == snake2){
-								//continue;
+								return;
 							}
-							if(Math.abs(snake2.x - snake.x) + Math.abs(snake2.y - snake.y) < 30){
-								this.killSnake(i);
-							}else{
-								i++;
-							}
- 						}
+							snake2.body.forEach(segment => {
+								if(Math.abs(snake.x - segment.x)+Math.abs(snake.y - segment.y) < 40 && snake2.strength < 1){
+									segment.slow = true;
+								}
+							})
+						})
 					})
 				}
 			}
 			class Food{
 				constructor(board, x, y){
-					this.board = board;					
+					this.board = board;
 					this.x = x;
 					this.y = y;
 					this.type;
@@ -154,6 +163,7 @@
 					this.type = "apple";
 					this.totalFood = 200;
 					this.sugarContent = 5;
+					this.protien = 0;
 					this.startWidth = 280*Rules.fruitScale;
 					this.startHeight = 357*Rules.fruitScale;
 					this.width = this.startWidth;
@@ -167,6 +177,7 @@
 					this.type = "grape";
 					this.totalFood = 5;
 					this.sugarContent = 50;
+					this.protien = 0;
 					this.startWidth = 45*Rules.fruitScale;
 					this.startHeight = 50*Rules.fruitScale;
 					this.width = this.startWidth;
@@ -180,8 +191,23 @@
 					this.type = "donut";
 					this.totalFood = 300;
 					this.sugarContent = 20;
+					this.protien = 0;
 					this.startWidth = 400*Rules.fruitScale;
 					this.startHeight = 400*Rules.fruitScale;
+					this.width = this.startWidth;
+					this.height = this.startHeight;
+				}
+			}
+
+			class Meat extends Food{
+				constructor(board, x, y){
+					super(board, x, y)
+					this.type = "meat";
+					this.totalFood = 300;
+					this.sugarContent = 10;
+					this.protien = 2;
+					this.startWidth = 200*Rules.fruitScale;
+					this.startHeight = 200*Rules.fruitScale;
 					this.width = this.startWidth;
 					this.height = this.startHeight;
 				}
@@ -196,6 +222,7 @@
 					this.targetRad = Math.random()*Math.PI*2;
 					this.speed = 500;
 					this.tempSpeed = 0;
+					this.strength = 0;
 					this.turnSpeedRad = degToRad(1000);
 					this.headingRad = 0;
 					this.length = 10;
@@ -249,15 +276,26 @@
 				}
 				bodyTick(){
 					this.tempSpeed *= 0.99;
+					if(this.strength > 0){
+						this.strength --;
+					}
 
-					if(this.body.length < this.length){
+					let bodyLength = this.length*Rules.snakeLengthMod;
+
+					if(this.body.length < bodyLength){
 						this.body.push({x: this.x, y: this.y})
 					}
-					while(this.body.length > this.length){
+					while(this.body.length > bodyLength){
 						this.body.shift()
 					}
 					this.body.shift()
 					this.body.push({x: this.x, y: this.y})
+
+					this.body.forEach(segment => {
+						if(segment.slow == true){
+							this.tempSpeed = -400;
+						}
+					})
 				}
 				tick(dt){
 					if(!this.dead){
@@ -275,6 +313,9 @@
 				speedBoost(amount){
 					this.tempSpeed += amount;
 				}
+				strengthen(amount){
+					this.strength += amount;
+				}
 				setTarget(x, y){
 					this.targetRad = this.getTargetAngleInRadians(x, y);
 				}
@@ -290,10 +331,13 @@
  			//VIEW
  			let ImageURLs = {
 				head: 'images/derpHead.png',
+				strongHead: 'images/strongDerpHead2.png',
 				body: 'images/blueCircle.png',
+				bodyFlat: 'images/orangeCircle.png',
 				apple: 'images/apple.png',
 				grape: 'images/grape.png',
 				donut: 'images/donut.png',
+				meat: 'images/meat.png',
 				background: 'images/black.png',
 				minimapBackground: 'images/minimapBackground.jpg',
 			};
@@ -371,15 +415,28 @@
 						if(sim.foodList[i].type == "donut"){
 							context.draw(foodSpec, Img.donut, camera)
 						}
+						if(sim.foodList[i].type == "meat"){
+							context.draw(foodSpec, Img.meat, camera)
+						}
 					}
  					sim.snakeList.forEach(snake => {
 						headSpec.x = snake.x;
 						headSpec.y = snake.y;
  						for(let i = 0; i < snake.body.length; i++){
 							let bodySpec = {x: snake.body[i].x, y: snake.body[i].y, width: 40, height: 40, xAnchor: 0.5, yAnchor: 0.5};
-							context.draw(bodySpec, Img.body, camera)
+							if(snake.body[i].slow){
+								context.draw(bodySpec, Img.bodyFlat, camera)
+							}else{
+								context.draw(bodySpec, Img.body, camera)
+							}
+							
 						}
-						context.draw(headSpec, Img.head, camera);
+						if(snake.strength > 0){
+							context.draw(headSpec, Img.strongHead, camera);
+						}else{
+							context.draw(headSpec, Img.head, camera);
+						}
+						
 					})
 				}
 				renderMinimap(context, sim){
@@ -407,6 +464,9 @@
 						if(sim.foodList[i].type == "donut"){
 							context.drawImage(Img.donut, drawX, drawY, foodSpec.width, foodSpec.height);
 						}
+						if(sim.foodList[i].type == "meat"){
+							context.drawImage(Img.meat, drawX, drawY, foodSpec.width, foodSpec.height);
+						}
 					}
 
 					let headSpec = {x: sim.snakeList[0].x/10, y: sim.snakeList[0].y/10, width: 10, height: 10, xAnchor: 0.5, yAnchor: 0.5};
@@ -417,8 +477,12 @@
 						drawX -= headSpec.width*headSpec.xAnchor;
 						drawY -= headSpec.height*headSpec.yAnchor;
 					}
-
-					context.drawImage(Img.head, drawX, drawY, headSpec.width, headSpec.height);
+					if(snake.strength > 0){
+						context.drawImage(Img.strongHead, drawX, drawY, headSpec.width, headSpec.height);
+					}else{
+						context.drawImage(Img.head, drawX, drawY, headSpec.width, headSpec.height);
+					}
+					
 				}
 			}
  			//ORGANIZATION
@@ -444,6 +508,7 @@
 						sim.snakesCollided();
 						$("#length").html("Your length is "+sim.snake.length);
 						$("#speed").html("Your speed is "+Math.floor((sim.snake.speed+sim.snake.tempSpeed)/5));
+						$("#strength").html("Your strength is "+sim.snake.strength)
 						sim.tick(1/60);
 						sim.timeSinceLastSim -= 1/60;
 					}
@@ -475,6 +540,9 @@
 		</div>
 		<div id="speed">
 			speed
+		</div>
+		<div id="strength">
+			strength
 		</div>
 	</body>
 </html>
