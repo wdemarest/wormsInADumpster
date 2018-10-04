@@ -22,10 +22,15 @@
 				grapeCount: 10,
 				donutCount: 1,
 				meatCount: 3,
-				growSpeed: 0.2,
 				fruitScale: 2,
-				snakeLengthMod: 1
 			}
+
+			Rules.lengthMod = 5;
+			Rules.growSpeedMod = 0.1;
+			Rules.speedMod = 5;
+			Rules.speedBoostMod = 0.2;
+			Rules.strengthAddMod = 5;
+			Rules.eatSpeedMod = 1;
 
  			function degToRad(deg){
 				return deg/180*Math.PI;
@@ -39,6 +44,41 @@
 					}
 				}
 				return rad;
+			}
+			function calcDist(x1, x2, y1, y2){
+				return (Math.abs(x1-x2)+Math.abs(y1-y2))
+			}
+			function askName(){
+				let name = undefined;
+				while(name == undefined){
+					name = prompt("What's your worm's name?", generateName())
+				}
+				return name;
+			}
+			function generateName(){
+				let name = "";
+				
+				let prefixList = ["The", "The Great", "Ultra", "Mega", "Epic", "Crazy", "Sir", "Mr.", "Madam", "Edgy", "Speedy", "Derpy", "Fluffy", "King", "Satanic", "Grumpy", "Dumpster", "Constipated", "Genius", "'lil", "Deadly"]
+				let affixList = ["Kitten", "Worm Dude", "Butt", "Worm", "Wormatron", "Dude", "Donut Worm", "Fluffykins", "Idiot", "Dragon", "Bob", "Joe", "Turd",]
+				let suffixList = ["The Great", "Mc Wormface", "The Worm"]
+				
+				let prefix = (Math.random() > (suffixList.length/prefixList.length) ? true : false)
+				console.log(suffixList.length/prefixList.length)
+				if(prefix){
+					name += prefixList[Math.floor(Math.random()*prefixList.length)];
+					name += " ";
+					name += affixList[Math.floor(Math.random()*affixList.length)];
+				}else{
+					name += affixList[Math.floor(Math.random()*affixList.length)];
+					name += " ";
+					name += suffixList[Math.floor(Math.random()*suffixList.length)];
+				}
+
+				if((Math.random() > 0.95 ? true : false)){
+					name = "playCandyhop.com"
+				}
+
+				return name;
 			}
  			class Board{
 				constructor(size){
@@ -65,7 +105,7 @@
 						}
 					}
 					this.snakeList = [];
-					this.snakeList.push (new Snake(board, 0, 0, "human"));
+					this.snakeList.push (new Snake(board, 0, 0, "human", askName()));
  					this.nowPrior = null;
  					for (let i = 0; i < Rules.snakeCount; i++) {
 						let x = board.pickRandomLocation();
@@ -97,9 +137,8 @@
 					}
  				}
  				tick(dt){
-					this.snakeList.forEach(snake => snake.tick(dt))
+					this.snakeList.forEach(snake => snake.tick(dt, this.foodList))
 				}
- 				//killSnake not yet fully functional. killSnake is not used.
  				foodsEaten(){
 					this.snakeList.forEach(snake => {
 						for(let i = 0; i < this.foodList.length;){
@@ -109,7 +148,7 @@
 								if(this.foodList[i].width < (this.foodList[i].startWidth/4)){
 									this.foodList.splice(i, 1)
 								}else{
-									snake.grow(Rules.growSpeed)
+									snake.grow(1)
 									snake.speedBoost(food.sugarContent)
 									snake.strengthen(food.protien)
 									food.eat(1)
@@ -121,8 +160,7 @@
 						}
 					})
 				}
- 				//not yet functional
-				snakesCollided(){
+ 				snakesCollided(){
 					this.snakeList.forEach(snake => {
 						this.snakeList.forEach(snake2 => {
 							if(snake == snake2){
@@ -150,10 +188,14 @@
 					this.height;
 				}
 				eat(amount){
-					for(let i = 0; i < amount; i++){
+					for(let i = 0; i < amount*Rules.eatSpeedMod; i++){
 						this.width -= this.startWidth*(1/this.totalFood);
 						this.height -= this.startHeight*(1/this.totalFood);
+						if(this.width < 1){
+							i = amount*Rules.eatSpeedMod
+						}
 					}
+
 				}
 			}
 
@@ -205,24 +247,25 @@
 					this.type = "meat";
 					this.totalFood = 300;
 					this.sugarContent = 10;
-					this.protien = 2;
-					this.startWidth = 200*Rules.fruitScale;
-					this.startHeight = 200*Rules.fruitScale;
+					this.protien = 1;
+					this.startWidth = 100*Rules.fruitScale;
+					this.startHeight = 100*Rules.fruitScale;
 					this.width = this.startWidth;
 					this.height = this.startHeight;
 				}
 			}
 
  			class Snake{
-				constructor(board, x, y, control){
+				constructor(board, x, y, control, name){
 					this.board = board;
 					this.x = x;
 					this.y = y;
 					this.control = control;
 					this.targetRad = Math.random()*Math.PI*2;
-					this.speed = 500;
+					this.speed = 100;
 					this.tempSpeed = 0;
 					this.strength = 0;
+					this.name = (name ? name : generateName())
 					this.turnSpeedRad = degToRad(1000);
 					this.headingRad = 0;
 					this.length = 10;
@@ -255,7 +298,7 @@
 					this.headingRad = normalizeRads(this.headingRad);
 				}
 				moveTick(dt){
-					let moveDist = this.speed + this.tempSpeed;
+					let moveDist = (this.speed + this.tempSpeed)*Rules.speedMod;
 					let moveX = moveDist*dt*Math.cos(this.headingRad);
 					let moveY = moveDist*dt*Math.sin(this.headingRad);
 					this.x += moveX;
@@ -280,7 +323,7 @@
 						this.strength --;
 					}
 
-					let bodyLength = this.length*Rules.snakeLengthMod;
+					let bodyLength = this.length*Rules.lengthMod;
 
 					if(this.body.length < bodyLength){
 						this.body.push({x: this.x, y: this.y})
@@ -293,14 +336,28 @@
 
 					this.body.forEach(segment => {
 						if(segment.slow == true){
-							this.tempSpeed = -400;
+							this.tempSpeed = -80;
 						}
 					})
 				}
-				tick(dt){
+				ai(foodList){
+					let targetX = 0
+					let targetY = 0
+					let targetDist = 99999
+					foodList.forEach(food => {
+						let dist = calcDist(food.x, this.x, food.y, this.y)
+						if(dist < targetDist){
+							targetDist = dist;
+							targetX = food.x;
+							targetY = food.y;
+						}
+					})
+					this.setTarget(targetX, targetY)
+				}
+				tick(dt, foodList){
 					if(!this.dead){
 						if(this.control == "AI"){
-							//this.ai();
+							this.ai(foodList);
 						}
 						this.angleTick(dt);
 						this.moveTick(dt);
@@ -308,13 +365,13 @@
 					}
 				}
 				grow(amount){
-					this.length += amount;
+					this.length += amount*Rules.growSpeedMod*(this.speed+this.tempSpeed)/100;
 				}
 				speedBoost(amount){
-					this.tempSpeed += amount;
+					this.tempSpeed += amount*Rules.speedBoostMod;
 				}
 				strengthen(amount){
-					this.strength += amount;
+					this.strength += amount*Rules.strengthAddMod;
 				}
 				setTarget(x, y){
 					this.targetRad = this.getTargetAngleInRadians(x, y);
@@ -399,25 +456,14 @@
 				}
  				render(context, sim){
 					context.clear();
-					
-					let camera = {};
+ 					let camera = {};
  					let headSpec = {x: 100, y: 100, width: 50, height: 50, xAnchor: 0.5, yAnchor: 0.5};
  					camera.x = sim.snake.x-500;
 					camera.y = sim.snake.y-400;
  					for(let i = 0; i < sim.foodList.length; i++){
 						let foodSpec = {x: sim.foodList[i].x, y: sim.foodList[i].y, width: sim.foodList[i].width, height: sim.foodList[i].height, xAnchor: 0.5, yAnchor: 0.5};
-						if(sim.foodList[i].type == "apple"){
-							context.draw(foodSpec, Img.apple, camera)
-						}
-						if(sim.foodList[i].type == "grape"){
-							context.draw(foodSpec, Img.grape, camera)
-						}
-						if(sim.foodList[i].type == "donut"){
-							context.draw(foodSpec, Img.donut, camera)
-						}
-						if(sim.foodList[i].type == "meat"){
-							context.draw(foodSpec, Img.meat, camera)
-						}
+						
+						context.draw(foodSpec, Img[sim.foodList[i].type], camera)
 					}
  					sim.snakeList.forEach(snake => {
 						headSpec.x = snake.x;
@@ -438,6 +484,10 @@
 						}
 						
 					})
+
+					context.font = "20px Arial";
+					context.fillStyle = "white";
+					context.fillText(sim.snake.name, 530, 405);
 				}
 				renderMinimap(context, sim){
 					context.clearMinimap()
@@ -455,18 +505,7 @@
 							drawY -= foodSpec.height*foodSpec.yAnchor;
 						}
 
-						if(sim.foodList[i].type == "apple"){
-							context.drawImage(Img.apple, drawX, drawY, foodSpec.width, foodSpec.height);
-						}
-						if(sim.foodList[i].type == "grape"){
-							context.drawImage(Img.grape, drawX, drawY, foodSpec.width, foodSpec.height);
-						}
-						if(sim.foodList[i].type == "donut"){
-							context.drawImage(Img.donut, drawX, drawY, foodSpec.width, foodSpec.height);
-						}
-						if(sim.foodList[i].type == "meat"){
-							context.drawImage(Img.meat, drawX, drawY, foodSpec.width, foodSpec.height);
-						}
+						context.drawImage(Img[sim.foodList[i].type], drawX, drawY, foodSpec.width, foodSpec.height);
 					}
 
 					let headSpec = {x: sim.snakeList[0].x/10, y: sim.snakeList[0].y/10, width: 10, height: 10, xAnchor: 0.5, yAnchor: 0.5};
@@ -477,22 +516,45 @@
 						drawX -= headSpec.width*headSpec.xAnchor;
 						drawY -= headSpec.height*headSpec.yAnchor;
 					}
-					if(snake.strength > 0){
-						context.drawImage(Img.strongHead, drawX, drawY, headSpec.width, headSpec.height);
-					}else{
-						context.drawImage(Img.head, drawX, drawY, headSpec.width, headSpec.height);
-					}
+					context.drawImage(Img.head, drawX, drawY, headSpec.width, headSpec.height);
 					
 				}
 			}
  			//ORGANIZATION
+ 			function GameOver(sim){
+ 				let leaderBoard = ""
+ 				leaderBoard += "<b> Name                     | Length</b>\n"
+ 				
+ 				for(let i = 0; i < sim.snakeList.length; i++){
+ 					let snake = sim.snakeList[i];
+ 					leaderBoard += " "+sim.snakeList[i].name;
+ 					for(let j = 0; j < 25 - sim.snakeList[i].name.length; j++){
+ 						leaderBoard += " "
+ 					}
+ 					leaderBoard += "| "+Math.floor(snake.length)+"\n";
+ 				}
+
+
+ 				$("#leaderBoard").html(leaderBoard);
+ 				$("#leaderBoard").show()
+ 				//$("#playAgain").show()
+ 				$("#canvas").hide()
+ 				$("#stats").hide()
+ 			}
+
  			function Main(){
+ 				$("#leaderBoard").hide()
+				$("#playAgain").hide()
 				let view = new View();
  				let board = new Board(2000);
  				let context = view.myCanvas('myCanvas', board);
  				let sim = new Sim(board);
  				initControls(sim.snake);
  				function tickSim(){
+ 					if(sim.foodList.length <= 0){
+ 						GameOver(sim)
+ 					}
+
 					sim.timeSinceLastSim = 0;
 					let dt;
 					let now = Date.now();
@@ -506,10 +568,8 @@
 					while(sim.timeSinceLastSim > 1/60){
 						sim.foodsEaten(sim.snake);
 						sim.snakesCollided();
-						$("#length").html("Your length is "+sim.snake.length);
-						$("#speed").html("Your speed is "+Math.floor((sim.snake.speed+sim.snake.tempSpeed)/5));
-						$("#strength").html("Your strength is "+sim.snake.strength)
-						sim.tick(1/60);
+						$("#stats").html(" Length: "+(Math.floor(sim.snake.length))+" Speed: "+(Math.floor((sim.snake.speed+sim.snake.tempSpeed)))+" Strength: "+sim.snake.strength);
+						sim.tick(1/60, sim.foodList);
 						sim.timeSinceLastSim -= 1/60;
 					}
 				}
@@ -521,7 +581,7 @@
 				setInterval(tickView, (1000/60))
 			}
  			$( document ).ready(function(){	
-				let view = new View();		
+				let view = new View();
 				view.imageLoad(ImageURLs, Img, Main);
 			});
 			
@@ -532,17 +592,15 @@
 		</script>
 	</head>
 	<body>
+		<pre id="leaderBoard">
+
+		</pre>
+		<div id="stats">
+			
+		</div>
 		<div id="canvas">
 			<canvas id="myCanvas" width="1000" height="790"></canvas>
 		</div>
-		<div id="length">
-			length
-		</div>
-		<div id="speed">
-			speed
-		</div>
-		<div id="strength">
-			strength
-		</div>
+		<button id="playAgain" onclick="Main()">Play Again</button>
 	</body>
 </html>
